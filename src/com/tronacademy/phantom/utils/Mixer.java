@@ -2,9 +2,13 @@ package com.tronacademy.phantom.utils;
 
 /**
  * <p>
- * Abstract class for all Mixers. Mixers process an array of bytes
- * representing input channels and processes them according to the
- * type of mixer and its configuration. 
+ * Mixer.java
+ * </p>
+ * 
+ * <p>
+ * Methods common to all Mixers. 
+ * Objects which processes input channel values and returns
+ * an array of values representing output channels.
  * </p>
  * 
  * @author George Xian
