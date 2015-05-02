@@ -21,9 +21,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 	
 	public static final int CHANNEL_PACK_LIMIT = 255;
 	public static final int COMMAND_CHAR_LIMIT = 255;
-	public static final int IMAGE_ID_LIMIT = 255;
 	public static final int IMAGE_PACK_LIMIT = 16777216;
-	public static final int BINARY_ID_LIMIT = 255;
 	public static final int BINARY_PACK_LIMIT = 16777216;
 	
 	@Override
@@ -165,7 +163,27 @@ public class KillalotAssembler implements ProtocolAssembler {
 	@Override
 	public List<ByteArrayOutputStream> serializeAsBinary(ByteArrayOutputStream data) 
 			throws AssemblyException {
-		// TODO Auto-generated method stub
-		return null;
+		
+		final int noOfFrames = (int) Math.ceil(((double) data.size())/((double) KillalotDatagram.PAYLOAD_LEN));
+		if (noOfFrames > BINARY_PACK_LIMIT) {
+			String erMsg = String.format("Exceeded packet limit if %d", BINARY_PACK_LIMIT);
+			throw new AssemblyException("Killalot", DataType.BINARY, erMsg);
+		}
+		
+		List<ByteArrayOutputStream> ret = new ArrayList<ByteArrayOutputStream>(noOfFrames);
+		
+		for (int i=0; i<noOfFrames; i++) {
+			byte[] header = {BINARY_INDICATOR, 
+							 (byte) (i & 0x00FF0000),
+							 (byte) (i & 0x0000FF00),
+							 (byte) (i & 0x000000FF)
+							};
+			
+			byte[] payload = new byte[KillalotDatagram.PAYLOAD_LEN];
+			data.write(payload, i, i+KillalotDatagram.PAYLOAD_LEN);
+			ret.add(new KillalotDatagram(header, payload).byteStreamForm());
+		}
+		
+		return ret;
 	}
 }
