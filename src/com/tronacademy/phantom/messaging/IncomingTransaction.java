@@ -1,7 +1,5 @@
 package com.tronacademy.phantom.messaging;
 
-import java.io.ByteArrayInputStream;
-
 import com.tronacademy.phantom.messaging.ProtocolAssembler.DataType;
 
 /**
