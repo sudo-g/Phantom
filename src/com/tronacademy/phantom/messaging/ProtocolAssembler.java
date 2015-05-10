@@ -1,7 +1,6 @@
 package com.tronacademy.phantom.messaging;
 
 import java.io.ByteArrayOutputStream;
-import java.util.List;
 
 import android.graphics.Bitmap;
 
@@ -54,42 +53,43 @@ public interface ProtocolAssembler {
 	public enum DataType {CHANNEL, COMMAND, IMAGE, BINARY};
 	
 	/**
+	 * @return Get string name of this protocol assembler type.
+	 */
+	public String getName();
+	
+	/**
 	 * Assemble control channel stream data for messaging.
 	 * 
+	 * @param name          String name of transaction process to generate.
 	 * @param channelStream The control channel stream.
-	 * @return The packets of serial streams to send. 
-	 * @throws AssemblyException 
+	 * @return Transaction handler for this channel stream, null if assembly failed. 
 	 */
-	public List<ByteArrayOutputStream> serializeAsChannels(byte[] channelStream) 
-			throws AssemblyException;
+	public OutgoingTransaction serializeAsChannels(String name, byte[] channelStream);
 	
 	/**
 	 * Assemble terminal commands for messaging.
 	 * 
+	 * @param name    String name of the transaction process to generate.
 	 * @param command The terminal command as a string.
-	 * @return The packets of serial streams to send.
-	 * @throws AssemblyException
+	 * @return Transaction handler for this command string, null if assembly failed.
 	 */
-	public List<ByteArrayOutputStream> serializeAsCommands(String command) 
-			throws AssemblyException;
+	public OutgoingTransaction serializeAsCommands(String name, String command);
 	
 	/**
 	 * Assemble a 8 bit per color RGB bitmap image for imaging.
 	 * 
+	 * @param name  String name of the transaction progress to generate.
 	 * @param image Raw image as bitmap.
-	 * @return The packets of serial streams to send.
-	 * @throws AssemblyException
+	 * @return Transaction handler for this bitmap, null if assembly failed.
 	 */
-	public List<ByteArrayOutputStream> serializeAsBitmapRGBA8(Bitmap image)
-			throws AssemblyException;
+	public OutgoingTransaction serializeAsBitmap(String name, Bitmap image);
 	
 	/**
 	 * Assemble generic data for messaging.
 	 * 
+	 * @param name  String name of the transaction progress to generate.
 	 * @param data  Generic data as byte-stream
-	 * @return The packets of serial streams to send.
-	 * @throw AssemblyException
+	 * @return Transaction handler for this binary data, null if assembly failed.
 	 */
-	public List<ByteArrayOutputStream> serializeAsBinary(ByteArrayOutputStream data) 
-			throws AssemblyException;
+	public OutgoingTransaction serializeAsBinary(String name, ByteArrayOutputStream data);
 }

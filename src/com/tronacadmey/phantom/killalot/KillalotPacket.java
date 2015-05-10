@@ -3,12 +3,14 @@ package com.tronacadmey.phantom.killalot;
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 
+import com.tronacademy.phantom.messaging.Packet;
+
 /**
  * Packet structure for SLIP protocol developed for use 
  * with project Killalot. Frame format is:
  * <ul>
- * 	<li>4 bytes header
- * 	<li>8 bytes payload
+ * 	<li>4 bytes header</li>
+ * 	<li>8 bytes payload</li>
  * </ul>
  * SLIP END characters are both appended and prepended to 
  * the byte stream to delimit the packet.
@@ -23,34 +25,47 @@ import java.util.Arrays;
  * @since 2014-07-08
  *
  */
-public class KillalotDatagram {
+public class KillalotPacket implements Packet {
 	
 	// SLIP values
 	public static final int HEADER_LEN = 4;
 	public static final int PAYLOAD_LEN = 8;
+	public static final int WORST_CASE_PACKET_LEN = 26;
 	
 	public static final byte SLIP_END = (byte) 0xC0;
 	public static final byte SLIP_ESC = (byte) 0xDB;
 	public static final byte SLIP_ESC_END = (byte) 0xDC;
 	public static final byte SLIP_ESC_ESC = (byte) 0xDD;
 	
-	// Byte stream form cache
-	private ByteArrayOutputStream mByteStreamForm = new ByteArrayOutputStream(26);
+	// Byte stream form
+	private final ByteArrayOutputStream mByteStreamForm;
 	private int mStreamLen = 0; 
 	
 	// Frame data
-	private byte[] mHeader = new byte[HEADER_LEN];
-	private byte[] mPayload = new byte[PAYLOAD_LEN];
+	private final byte[] mHeader;
+	private final byte[] mPayload;
 	
 	/**
 	 * @param header Header data of this datagram.
 	 * @param payload Data if this datagram.
 	 */
-	public KillalotDatagram(byte[] header, byte[] payload) {
+	public KillalotPacket(byte[] header, byte[] payload) {
 		mHeader = Arrays.copyOfRange(header, 0, HEADER_LEN);
 		mPayload = Arrays.copyOfRange(payload, 0, PAYLOAD_LEN);
 		
-		computeByteStreamForm();	
+		mByteStreamForm = computeByteStreamForm();	
+	}
+	
+	/**
+	 * Create a datagram from raw byte stream,
+	 * 
+	 * @param byteStream Stream without pre-inserted escape characters.
+	 */
+	public KillalotPacket(byte[] byteStream) {
+		mHeader = Arrays.copyOfRange(byteStream, 0, HEADER_LEN);
+		mPayload = Arrays.copyOfRange(byteStream, HEADER_LEN, HEADER_LEN + PAYLOAD_LEN);
+		
+		mByteStreamForm = computeByteStreamForm();
 	}
 	
 	/**
@@ -67,21 +82,21 @@ public class KillalotDatagram {
 		return mPayload;
 	}
 	
-	/**
-	 * Get serial form for transmission.
-	 * 
-	 * @return Byte stream with escape characters added.
-	 */
-	public ByteArrayOutputStream byteStreamForm() {
+	@Override
+	public ByteArrayOutputStream serialize() {
 		return mByteStreamForm;
 	}
 	
-	/**
-	 * Returns byte stream in numerical string form for testing.
-	 * 
-	 * @return String of the byte stream
-	 * @throws IOException 
-	 */
+	@Override 
+	public int getSize() {
+		return mStreamLen;
+	}
+	
+	public static int getDecodedSize() {
+		return HEADER_LEN + PAYLOAD_LEN;
+	}
+	
+	@Override
 	public String stringForm() {
 		byte[] byteArray = mByteStreamForm.toByteArray();
 		
@@ -92,26 +107,28 @@ public class KillalotDatagram {
 		return strBuilder.toString();
 	}
 	
-	private void computeByteStreamForm() { 
+	private ByteArrayOutputStream computeByteStreamForm() { 
+		final ByteArrayOutputStream out = new ByteArrayOutputStream(WORST_CASE_PACKET_LEN);
+		
 		// write begin character
-		mByteStreamForm.write(SLIP_END);
+		out.write(SLIP_END);
 		mStreamLen++;
 		
 		// write header
 		for (int i=0; i<HEADER_LEN; i++) {
 			switch(mHeader[i]) {
 			case(SLIP_END):
-				mByteStreamForm.write(SLIP_ESC);
-				mByteStreamForm.write(SLIP_ESC_END);
+				out.write(SLIP_ESC);
+				out.write(SLIP_ESC_END);
 				mStreamLen += 2;
 				break;
 			case(SLIP_ESC):
-				mByteStreamForm.write(SLIP_ESC);
-				mByteStreamForm.write(SLIP_ESC_ESC);
+				out.write(SLIP_ESC);
+				out.write(SLIP_ESC_ESC);
 				mStreamLen += 2;
 				break;
 			default:
-				mByteStreamForm.write(mHeader[i]);
+				out.write(mHeader[i]);
 				mStreamLen++;
 			} 
 		}
@@ -120,23 +137,25 @@ public class KillalotDatagram {
 		for (int i=0; i<PAYLOAD_LEN; i++) {
 			switch(mPayload[i]) {
 			case(SLIP_END):
-				mByteStreamForm.write(SLIP_ESC);
-				mByteStreamForm.write(SLIP_ESC_END);
+				out.write(SLIP_ESC);
+				out.write(SLIP_ESC_END);
 				mStreamLen += 2;
 				break;
 			case(SLIP_ESC):
-				mByteStreamForm.write(SLIP_ESC);
-				mByteStreamForm.write(SLIP_ESC_ESC);
+				out.write(SLIP_ESC);
+				out.write(SLIP_ESC_ESC);
 				mStreamLen += 2;
 				break;
 			default:
-				mByteStreamForm.write(mPayload[i]);
+				out.write(mPayload[i]);
 				mStreamLen++;
 			}
 		}
 		
 		// write end character
-		mByteStreamForm.write(SLIP_END);
+		out.write(SLIP_END);
 		mStreamLen++;
+		
+		return out;
 	}
 }
