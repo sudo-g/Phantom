@@ -61,7 +61,7 @@ public class KillalotDecoder implements ProtocolDecoder {
 					KillalotPacket recvPacket = new KillalotPacket(tempPacket.toByteArray());
 					delegatePacketByType(recvPacket);
 					
-					tempPacket = null;    // empty temp packet
+					tempPacket = null;    // flush temp packet
 				}
 			} else if (read == KillalotPacket.SLIP_ESC) {
 				escaping = true;
@@ -120,9 +120,11 @@ public class KillalotDecoder implements ProtocolDecoder {
 			}
 		} else {
 			// start a new command transaction
-			final int chars = recvPacket.getHeader()[3];
-			final int noOfPackets = (int) Math.ceil((double) chars / (double) KillalotPacket.PAYLOAD_LEN);
-			commandTransaction = new IncomingKillalotCommandTransaction(noOfPackets, chars);
+			final byte chars = recvPacket.getHeader()[3];
+			// number of characters cannot be negative
+			final int ichars = (chars < 0) ? ((int) chars & ~0x40000000) : chars;
+			final int noOfPackets = (int) Math.ceil((double) ichars / (double) KillalotPacket.PAYLOAD_LEN);
+			commandTransaction = new IncomingKillalotCommandTransaction(noOfPackets, ichars);
 			if (commandTransaction.capturePacket(recvPacket)) {
 				// transaction is complete
 				if (mListener != null) {
@@ -141,7 +143,7 @@ public class KillalotDecoder implements ProtocolDecoder {
 			final int cols = (recvPacket.getPayload()[5] << 8) | recvPacket.getPayload()[6];
 			final byte encoding = recvPacket.getPayload()[7];
 			// TODO: Currently ignores encoding, decodes as ARGB8888 
-			final int noOfFrames = (int) Math.ceil((double) rows * cols / 2); 
+			final int noOfFrames = (int) Math.ceil((double) (rows * cols / 2)); 
 			
 			imageTransaction = new IncomingKillalotImageTransaction(noOfFrames, rows, cols, encoding);
 		} else {

@@ -92,6 +92,9 @@ public class KillalotPacket implements Packet {
 		return mStreamLen;
 	}
 	
+	/**
+	 * @return Size of packet after decoding.
+	 */
 	public static int getDecodedSize() {
 		return HEADER_LEN + PAYLOAD_LEN;
 	}
