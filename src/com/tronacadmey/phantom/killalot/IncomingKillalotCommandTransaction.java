@@ -12,9 +12,8 @@ public class IncomingKillalotCommandTransaction extends IncomingTransaction {
 	private final StringBuilder mCmdStr;
 
 	/**
-	 * @param packets  Number of packets in the transaction.
-	 * @param rows     Number of rows in the bitmap.
-	 * @param cols     Number of columns in the bitmap.	
+	 * @param packets    Number of packets in the transaction.
+	 * @param characters Number of characters in the command.
 	 * @param encoding How each pixel in encoded.
 	 */
 	public IncomingKillalotCommandTransaction(int packets, int characters) {
@@ -28,7 +27,8 @@ public class IncomingKillalotCommandTransaction extends IncomingTransaction {
 		KillalotPacket kPacket = (KillalotPacket) packet;
 		byte[] relevantFragment;
 		if (kPacket.getHeader()[2] < KillalotPacket.PAYLOAD_LEN) {
-			relevantFragment = Arrays.copyOfRange(kPacket.getPayload(), 0, kPacket.getHeader()[2]);
+			// index cannot be negative
+			relevantFragment = Arrays.copyOfRange(kPacket.getPayload(), 0, (int) kPacket.getHeader()[2] & 0xFF);
 		} else {
 			relevantFragment = kPacket.getPayload();
 		}

@@ -2,12 +2,15 @@ package com.tronacadmey.phantom.killalot;
 
 import java.io.ByteArrayOutputStream;
 
-import android.graphics.Bitmap;
-
 import com.tronacademy.phantom.messaging.IncomingTransaction;
+import com.tronacademy.phantom.messaging.PBitmap;
+import com.tronacademy.phantom.messaging.PBitmap.Encoding;
 import com.tronacademy.phantom.messaging.ProtocolDecoder;
 
 public class KillalotDecoder implements ProtocolDecoder {
+	
+	public static final byte K_IMG_ENC_RGB565 = 0x01;
+	public static final byte K_IMG_ENC_ARGB8888 = 0x02;
 	
 	private ProtocolDecodeListener mListener;
 	
@@ -91,7 +94,7 @@ public class KillalotDecoder implements ProtocolDecoder {
 				if (imageTransaction.capturePacket(recvPacket)) {
 					if (mListener != null) {
 						// TODO: Analyze for errors
-						mListener.onRecvBitmap((Bitmap) imageTransaction.getDecodedResult(), null);
+						mListener.onRecvBitmap((PBitmap) imageTransaction.getDecodedResult(), null);
 					}
 				}
 			}
@@ -122,7 +125,7 @@ public class KillalotDecoder implements ProtocolDecoder {
 			// start a new command transaction
 			final byte chars = recvPacket.getHeader()[3];
 			// number of characters cannot be negative
-			final int ichars = (chars < 0) ? ((int) chars & ~0x40000000) : chars;
+			final int ichars = (int) chars & 0xFF; 
 			final int noOfPackets = (int) Math.ceil((double) ichars / (double) KillalotPacket.PAYLOAD_LEN);
 			commandTransaction = new IncomingKillalotCommandTransaction(noOfPackets, ichars);
 			if (commandTransaction.capturePacket(recvPacket)) {
@@ -141,10 +144,22 @@ public class KillalotDecoder implements ProtocolDecoder {
 		if (imageTransaction == null) {
 			final int rows = (recvPacket.getPayload()[3] << 8) | recvPacket.getPayload()[4];
 			final int cols = (recvPacket.getPayload()[5] << 8) | recvPacket.getPayload()[6];
-			final byte encoding = recvPacket.getPayload()[7];
-			// TODO: Currently ignores encoding, decodes as ARGB8888 
-			final int noOfFrames = (int) Math.ceil((double) (rows * cols / 2)); 
+			final byte bEnc = recvPacket.getPayload()[7];
 			
+			Encoding encoding = null;
+			int noOfFrames = 0;
+			switch (bEnc) {
+			case K_IMG_ENC_RGB565:
+				// RGB565
+				noOfFrames = (int) Math.ceil((double) (rows * cols / 4));
+				encoding = Encoding.RGB565;
+				break;
+			case K_IMG_ENC_ARGB8888:
+				// ARGB8888
+				noOfFrames = (int) Math.ceil((double) (rows * cols / 2));
+				encoding = Encoding.ARGB8888;
+				break;
+			}
 			imageTransaction = new IncomingKillalotImageTransaction(noOfFrames, rows, cols, encoding);
 		} else {
 			// TODO: raise error for creating new image transaction before completing previous
