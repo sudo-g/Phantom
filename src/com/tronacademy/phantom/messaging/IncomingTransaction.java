@@ -68,7 +68,7 @@ public class IncomingTransaction {
 	/**
 	 * @return A list of errors that occurred during transaction.
 	 */
-	public String[] getTransactionErrors() {
+	public TransactionError getTransactionErrors() {
 		return null;
 	}
 
