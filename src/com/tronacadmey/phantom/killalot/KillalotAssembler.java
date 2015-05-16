@@ -3,7 +3,7 @@ package com.tronacadmey.phantom.killalot;
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Queue;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -36,7 +36,6 @@ public class KillalotAssembler implements ProtocolAssembler {
 	public static final byte BINARYHEAD_INDICATOR = 20;
 	public static final byte BINARY_INDICATOR = 21;
 	
-	
 	// limits for each type of data type
 	public static final int CHANNEL_PACK_LIMIT = 255;
 	public static final int COMMAND_CHAR_LIMIT = 255;
@@ -57,7 +56,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new ArrayBlockingQueue<ByteArrayOutputStream>(noOfPackets);
+		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfPackets);
 		for (int i=0; i<noOfPackets; i++) {
 			// for channel frames, header 4th byte is first channel index in packet
 			byte[] header = {CHANNEL_INDICATOR, 
@@ -85,9 +84,8 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new ArrayBlockingQueue<ByteArrayOutputStream>(noOfPackets);
+		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfPackets);
 		for (int i=0; i<noOfPackets; i++) {
-			bytesToSend -= KillalotPacket.PAYLOAD_LEN;
 			// for command frames, 3rd byte is bytes remaining, 4th byte is total number of bytes 
 			byte[] header = {COMMAND_INDICATOR, 
 					         0, 
@@ -99,6 +97,12 @@ public class KillalotAssembler implements ProtocolAssembler {
 								(i+1)*KillalotPacket.PAYLOAD_LEN);
 			
 			ret.add(new KillalotPacket(header, payload).serialize());
+			
+			if (bytesToSend >= KillalotPacket.PAYLOAD_LEN) {
+				bytesToSend -= KillalotPacket.PAYLOAD_LEN;
+			} else {
+				bytesToSend = 0;
+			}
 		}
 		
 		return new OutgoingTransaction(name, ret, 1);
@@ -116,7 +120,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new ArrayBlockingQueue<ByteArrayOutputStream>(noOfFrames);
+		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfFrames);
 		
 		// TODO: Currently ignores Bitmap.Config and encodes as ARGB8888
 		// images begin with a header frame
@@ -186,7 +190,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new ArrayBlockingQueue<ByteArrayOutputStream>(noOfFrames);
+		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfFrames);
 		
 		//TODO: Binary data header
 		
