@@ -6,9 +6,10 @@ import android.graphics.Bitmap;
 
 import com.tronacademy.phantom.messaging.IncomingTransaction;
 import com.tronacademy.phantom.messaging.ProtocolDecoder;
-import com.tronacademy.phantom.comm.CommManager;
 
-public class KillalotDecoder extends ProtocolDecoder {
+public class KillalotDecoder implements ProtocolDecoder {
+	
+	private ProtocolDecodeListener mListener;
 	
 	// state trackers
 	private boolean inFrame = false;
@@ -20,18 +21,18 @@ public class KillalotDecoder extends ProtocolDecoder {
 	private IncomingTransaction imageTransaction = null;
 	private IncomingTransaction binaryTransaction = null;
 	
-	
-	public KillalotDecoder(CommManager commManager) {
-		super(commManager);
-	}
-	
 	@Override
 	public String getName() {
 		return "Killalot";
 	}
 	
+	@Override
+	public void setOnProtocolDecodeListener(ProtocolDecodeListener listener) {
+		mListener = listener;
+	}
+	
 	@Override 
-	protected void decode(byte read) {
+	public void decodeByte(byte read) {
 		if (inFrame) {
 			inFrameAction(read);
 		} else {
@@ -62,6 +63,8 @@ public class KillalotDecoder extends ProtocolDecoder {
 					
 					tempPacket = null;    // empty temp packet
 				}
+			} else if (read == KillalotPacket.SLIP_ESC) {
+				escaping = true;
 			} else {
 				tempPacket.write(read);
 			}
