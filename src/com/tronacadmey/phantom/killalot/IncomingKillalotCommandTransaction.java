@@ -38,7 +38,12 @@ public class IncomingKillalotCommandTransaction extends IncomingTransaction {
 		return super.capturePacket(packet);
 	}
 	
-	public String getResult() {
-		return mCmdStr.toString();
+	@Override
+	public Object getDecodedResult() {
+		if (getPacketsToGo() < 1) {
+			return mCmdStr.toString();
+		} else {
+			return null;
+		}
 	}
 }
