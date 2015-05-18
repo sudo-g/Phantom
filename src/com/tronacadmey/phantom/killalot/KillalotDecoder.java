@@ -122,7 +122,7 @@ public class KillalotDecoder implements ProtocolDecoder {
 			// start a new command transaction
 			final byte chars = recvPacket.getHeader()[3];
 			// number of characters cannot be negative
-			final int ichars = (int) chars & 0xFF; 
+			final int ichars = chars & 0xFF; 
 			final int noOfPackets = (int) Math.ceil((double) ichars / (double) KillalotPacket.PAYLOAD_LEN);
 			commandTransaction = new IncomingKillalotCommandTransaction(noOfPackets, ichars);
 			if (commandTransaction.capturePacket(recvPacket)) {
@@ -150,7 +150,7 @@ public class KillalotDecoder implements ProtocolDecoder {
 				// one pixel takes up 16 bits, which is the size of a short
 				noOfFrames = (int) Math.ceil(
 						(double) (width * height * Short.SIZE) /
-						(double) (Byte.SIZE *  KillalotPacket.PAYLOAD_LEN) );
+						(double) (Byte.SIZE * KillalotPacket.PAYLOAD_LEN) );
 				encoding = Encoding.RGB565;
 				break;
 			case KillalotAssembler.K_IMG_ENC_ARGB8888:

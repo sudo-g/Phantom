@@ -158,19 +158,21 @@ public class KillalotAssembler implements ProtocolAssembler {
 		for (int i=0; i<noOfFrames-1; i++) {
 			byte[] packet = new byte[KillalotPacket.getDecodedSize()];
 			
-			// header data
+			// HEADER
+			// frame type
 			packet[0] = IMAGE_INDICATOR;
-			packet[1] = (byte) ((i & 0x00FF0000) >>> 16);
-			packet[2] = (byte) ((i & 0x0000FF00) >>> 8);
-			packet[3] = (byte) (i & 0x000000FF);
+			// frame index
+			packet[1] = (byte) ((i >>> 16) & 0xFF);
+			packet[2] = (byte) ((i >>> 8) & 0xFF);
+			packet[3] = (byte) (i & 0xFF);
 			
 			try {
-				// payload data
+				// PAYLOAD
 				for (int j=KillalotPacket.HEADER_LEN; 
 						(j<KillalotPacket.PAYLOAD_LEN + KillalotPacket.HEADER_LEN) && (imgData.available() > 0); 
 						j++) {
 					
-					packet[j] = ((byte) imgData.read());
+					packet[j] = (byte) imgData.read();
 				}
 				ret.put(new KillalotPacket(packet).serialize());
 			} catch (IOException e) {

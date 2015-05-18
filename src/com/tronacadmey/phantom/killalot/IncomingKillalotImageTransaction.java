@@ -54,10 +54,10 @@ public class IncomingKillalotImageTransaction extends IncomingTransaction {
 			(i<KillalotPacket.PAYLOAD_LEN) && (mStreamIndex<mStream.length); 
 			i+=increment) {
 			
-			mStream[mStreamIndex++] = (payload[i] << 24) | 
-					                  (payload[i+1] << 16) | 
-					                  (payload[i+2] << 8) | 
-					                  (payload[i+3]);
+			mStream[mStreamIndex++] = ((payload[i] & 0xFF) << 24) | 
+					                  ((payload[i+1] & 0xFF) << 16) | 
+					                  ((payload[i+2] & 0xFF) << 8) | 
+					                  (payload[i+3] & 0xFF);
 		}
 		
 		return super.capturePacket(packet);

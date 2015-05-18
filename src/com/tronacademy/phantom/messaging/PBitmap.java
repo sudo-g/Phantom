@@ -89,10 +89,10 @@ public class PBitmap {
 		final byte[] byteArray = new byte[getSizeInBytes()];
 		int index = 0;
 		for (int data : mBinary) {
-			byteArray[index++] = (byte) ((data & 0xFF000000) >>> 24);
-			byteArray[index++] = (byte) ((data & 0x00FF0000) >>> 16);
-			byteArray[index++] = (byte) ((data & 0x0000FF00) >>> 8);
-			byteArray[index++] = (byte) (data & 0x000000FF);
+			byteArray[index++] = (byte) ((data >>> 24) & 0xFF);
+			byteArray[index++] = (byte) ((data >>> 16) & 0xFF);
+			byteArray[index++] = (byte) ((data >>> 8) & 0xFF);
+			byteArray[index++] = (byte) (data & 0xFF);
 		}
 		
 		return new ByteArrayInputStream(byteArray);
