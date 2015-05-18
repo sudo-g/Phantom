@@ -2,7 +2,7 @@ package com.tronacademy.phantom.messaging;
 
 import java.io.ByteArrayOutputStream;
 
-import android.graphics.Bitmap;
+import com.tronacademy.phantom.messaging.PBitmap;
 
 /**
  * <p>
@@ -76,13 +76,13 @@ public interface ProtocolAssembler {
 	public OutgoingTransaction serializeAsCommands(String name, String command);
 	
 	/**
-	 * Assemble a 8 bit per color RGB bitmap image for imaging.
+	 * Assemble a bitmap for messaging.
 	 * 
-	 * @param name  String name of the transaction progress to generate.
-	 * @param image Raw image as bitmap.
+	 * @param name   String name of the transaction progress to generate.
+	 * @param bmp    Image to encode.
 	 * @return Transaction handler for this bitmap, null if assembly failed.
 	 */
-	public OutgoingTransaction serializeAsBitmap(String name, Bitmap image);
+	public OutgoingTransaction serializeAsBitmap(String name, PBitmap bmp);
 	
 	/**
 	 * Assemble generic data for messaging.

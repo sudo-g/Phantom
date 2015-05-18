@@ -9,9 +9,6 @@ import com.tronacademy.phantom.messaging.ProtocolDecoder;
 
 public class KillalotDecoder implements ProtocolDecoder {
 	
-	public static final byte K_IMG_ENC_RGB565 = 0x01;
-	public static final byte K_IMG_ENC_ARGB8888 = 0x02;
-	
 	private ProtocolDecodeListener mListener;
 	
 	// state trackers
@@ -142,25 +139,29 @@ public class KillalotDecoder implements ProtocolDecoder {
 	
 	private void startNewImageTransaction(KillalotPacket recvPacket) {
 		if (imageTransaction == null) {
-			final int rows = (recvPacket.getPayload()[3] << 8) | recvPacket.getPayload()[4];
-			final int cols = (recvPacket.getPayload()[5] << 8) | recvPacket.getPayload()[6];
+			final int width = ((recvPacket.getPayload()[3] & 0xFF) << 8) | (recvPacket.getPayload()[4] & 0xFF);
+			final int height = ((recvPacket.getPayload()[5] & 0xFF) << 8) | (recvPacket.getPayload()[6] & 0xFF);
 			final byte bEnc = recvPacket.getPayload()[7];
 			
 			Encoding encoding = null;
 			int noOfFrames = 0;
 			switch (bEnc) {
-			case K_IMG_ENC_RGB565:
-				// RGB565
-				noOfFrames = (int) Math.ceil((double) (rows * cols / 4));
+			case KillalotAssembler.K_IMG_ENC_RGB565:
+				// one pixel takes up 16 bits, which is the size of a short
+				noOfFrames = (int) Math.ceil(
+						(double) (width * height * Short.SIZE) /
+						(double) (Byte.SIZE *  KillalotPacket.PAYLOAD_LEN) );
 				encoding = Encoding.RGB565;
 				break;
-			case K_IMG_ENC_ARGB8888:
-				// ARGB8888
-				noOfFrames = (int) Math.ceil((double) (rows * cols / 2));
+			case KillalotAssembler.K_IMG_ENC_ARGB8888:
+				// one pixel takes up 32 bits, which is the size of an integer
+				noOfFrames = (int) Math.ceil(
+						(double) (width * height * Integer.SIZE) / 
+						(double) (Byte.SIZE * KillalotPacket.PAYLOAD_LEN) );
 				encoding = Encoding.ARGB8888;
 				break;
 			}
-			imageTransaction = new IncomingKillalotImageTransaction(noOfFrames, rows, cols, encoding);
+			imageTransaction = new IncomingKillalotImageTransaction(noOfFrames, width, height, encoding);
 		} else {
 			// TODO: raise error for creating new image transaction before completing previous
 		}

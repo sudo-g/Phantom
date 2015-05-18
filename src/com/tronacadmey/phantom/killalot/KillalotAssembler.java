@@ -1,14 +1,14 @@
 package com.tronacadmey.phantom.killalot;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Queue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import android.graphics.Bitmap;
-import android.graphics.Color;
-
 import com.tronacademy.phantom.messaging.OutgoingTransaction;
+import com.tronacademy.phantom.messaging.PBitmap;
 import com.tronacademy.phantom.messaging.ProtocolAssembler;
 
 /**
@@ -31,6 +31,9 @@ public class KillalotAssembler implements ProtocolAssembler {
 	// images
 	public static final byte IMAGEHEAD_INDICATOR = 12;
 	public static final byte IMAGE_INDICATOR = 13;
+	
+	public static final byte K_IMG_ENC_RGB565 = 0x02;
+	public static final byte K_IMG_ENC_ARGB8888 = 0x04;
 	
 	// binary data
 	public static final byte BINARYHEAD_INDICATOR = 20;
@@ -56,7 +59,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfPackets);
+		BlockingQueue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfPackets);
 		for (int i=0; i<noOfPackets; i++) {
 			// for channel frames, header 4th byte is first channel index in packet
 			byte[] header = {CHANNEL_INDICATOR, 
@@ -84,7 +87,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfPackets);
+		BlockingQueue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfPackets);
 		for (int i=0; i<noOfPackets; i++) {
 			// for command frames, 3rd byte is bytes remaining, 4th byte is total number of bytes 
 			byte[] header = {COMMAND_INDICATOR, 
@@ -96,7 +99,12 @@ public class KillalotAssembler implements ProtocolAssembler {
 								i*KillalotPacket.PAYLOAD_LEN,
 								(i+1)*KillalotPacket.PAYLOAD_LEN);
 			
-			ret.add(new KillalotPacket(header, payload).serialize());
+			try {
+				ret.put(new KillalotPacket(header, payload).serialize());
+			} catch(InterruptedException e) {
+				// TODO
+				e.printStackTrace();
+			}
 			
 			if (bytesToSend >= KillalotPacket.PAYLOAD_LEN) {
 				bytesToSend -= KillalotPacket.PAYLOAD_LEN;
@@ -109,74 +117,69 @@ public class KillalotAssembler implements ProtocolAssembler {
 	}
 
 	@Override
-	public OutgoingTransaction serializeAsBitmap(String name, Bitmap image) {
-		final int rows = image.getHeight();
-		final int cols = image.getWidth();
-		final int pixels = rows*cols;
+	public OutgoingTransaction serializeAsBitmap(String name, PBitmap bmp) {
+		final int height = bmp.getHeight();
+		final int width = bmp.getWidth();
+		
+		byte encoding = 0x00;
+		switch (bmp.getEncoding()) {
+		case RGB565:
+			encoding = K_IMG_ENC_RGB565;
+			break;
+		case ARGB8888:
+			encoding = K_IMG_ENC_ARGB8888;
+			break;
+		}
+				
 		final int noOfFrames = 
-				(int) Math.ceil((double) pixels / (double) KillalotPacket.PAYLOAD_LEN) + 1;
+				(int) Math.ceil((double) bmp.getSizeInBytes() / (double) KillalotPacket.PAYLOAD_LEN) + 1;
 		
 		if (noOfFrames > IMAGE_PACK_LIMIT) {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfFrames);
+		BlockingQueue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfFrames);
 		
-		// TODO: Currently ignores Bitmap.Config and encodes as ARGB8888
 		// images begin with a header frame
 		byte[] metaHeader = {IMAGEHEAD_INDICATOR, 0, 0, 0};
-		byte[] metaData = {(byte) 0,                      // reserved
-						   (byte) 0,	                  // reserved
-						   (byte) 0,                      // reserved
-						   (byte) ((rows & 0xFF00) >> 8), // row size
-						   (byte) (rows & 0x00FF),
-						   (byte) ((cols & 0xFF00) >> 8), // col size
-						   (byte) (cols & 0x00FF),
-						   (byte) (0x02)                  // encoding (ARGB8888)
+		byte[] metaData = {(byte) 0,                        // reserved
+						   (byte) 0,	                    // reserved
+						   (byte) 0,                        // reserved
+						   (byte) ((width & 0xFF00) >>> 8), // 16 bit for image width
+						   (byte) (width & 0x00FF),
+						   (byte) ((height & 0xFF00) >>> 8),// 16 bit for image height
+						   (byte) (height & 0x00FF),
+						   (byte) encoding
 						  };
 		ret.add(new KillalotPacket(metaHeader, metaData).serialize());
 		
-		// pixel index of 1st part of frame
-		int r1 = 0;
-		int c1 = 0;
-		for (int i=0; i<noOfFrames; i++) {
-			byte[] header = {IMAGE_INDICATOR, 
-							 (byte) ((i & 0x00FF0000) >>> 16), 
-							 (byte) ((i & 0x0000FF00) >>> 8),
-							 (byte) (i & 0x000000FF)
-							};
+		// image data frames
+		final InputStream imgData = bmp.serialize();
+		for (int i=0; i<noOfFrames-1; i++) {
+			byte[] packet = new byte[KillalotPacket.getDecodedSize()];
 			
-			// pixel index of 2nd part of frame
-			int r2 = r1;
-			int c2;
-			if ((c1+1) < cols) {
-				c2 = c1 + 1;
-			} else {
-				// 2nd pixel will be end of column
-				r2++;
-				c2 = 0;
+			// header data
+			packet[0] = IMAGE_INDICATOR;
+			packet[1] = (byte) ((i & 0x00FF0000) >>> 16);
+			packet[2] = (byte) ((i & 0x0000FF00) >>> 8);
+			packet[3] = (byte) (i & 0x000000FF);
+			
+			try {
+				// payload data
+				for (int j=KillalotPacket.HEADER_LEN; 
+						(j<KillalotPacket.PAYLOAD_LEN + KillalotPacket.HEADER_LEN) && (imgData.available() > 0); 
+						j++) {
+					
+					packet[j] = ((byte) imgData.read());
+				}
+				ret.put(new KillalotPacket(packet).serialize());
+			} catch (IOException e) {
+				// another thread closes the stream prematurely
+				return null;
+			} catch (InterruptedException e) {
+				// TODO: Log cancelled download
+				e.printStackTrace();
 			}
-			
-			byte[] data = {(byte) Color.alpha(image.getPixel(c1, r1)),
-					       (byte) Color.red(image.getPixel(c1, r1)),
-					       (byte) Color.green(image.getPixel(c1, r1)),
-					       (byte) Color.blue(image.getPixel(c1, r1)),
-					       (byte) Color.alpha(image.getPixel(c2, r2)),
-					       (byte) Color.red(image.getPixel(c2, r2)),
-					       (byte) Color.green(image.getPixel(c2, r2)),
-					       (byte) Color.blue(image.getPixel(c2, r2))
-						  };
-			
-			// advance pixel index for next frame
-			if ((c1+2) < cols) {
-				c1 += 2;
-			} else {
-				// next frame will do pixels in next row
-				r1++;
-				c1 = 0;
-			}
-			
-			ret.add(new KillalotPacket(header, data).serialize());
 		}
 		
 		return new OutgoingTransaction(name, ret, 2);
@@ -190,7 +193,7 @@ public class KillalotAssembler implements ProtocolAssembler {
 			return null;
 		}
 		
-		Queue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfFrames);
+		BlockingQueue<ByteArrayOutputStream> ret = new LinkedBlockingQueue<ByteArrayOutputStream>(noOfFrames);
 		
 		//TODO: Binary data header
 		
@@ -203,7 +206,12 @@ public class KillalotAssembler implements ProtocolAssembler {
 			
 			byte[] payload = new byte[KillalotPacket.PAYLOAD_LEN];
 			data.write(payload, i, i+KillalotPacket.PAYLOAD_LEN);
-			ret.add(new KillalotPacket(header, payload).serialize());
+			try {
+				ret.put(new KillalotPacket(header, payload).serialize());
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 		
 		return new OutgoingTransaction(name, ret, 3);

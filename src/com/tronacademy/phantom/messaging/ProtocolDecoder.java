@@ -1,7 +1,5 @@
 package com.tronacademy.phantom.messaging;
 
-import android.graphics.Bitmap;
-
 /**
  * <p>
  * Methods common to all Phantom protocol decoders.
@@ -74,10 +72,10 @@ public interface ProtocolDecoder {
 		/**
 		 * Callback when a bitmap has been successfully decoded.
 		 * 
-		 * @param image Image decoded.
+		 * @param bmp   Bitmap decoded.
 		 * @param error Handler for errors that occurred during transaction, null if no error.
 		 */
-		public void onRecvBitmap(Bitmap image, TransactionError error);
+		public void onRecvBitmap(PBitmap bmp, TransactionError error);
 		
 		/**
 		 * Callback when a request was made by the network.
