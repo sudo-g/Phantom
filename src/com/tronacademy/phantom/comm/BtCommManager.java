@@ -74,6 +74,7 @@ public class BtCommManager extends CommManager {
 				initializeErrorLogIfNull(error);
 				// TODO: add info to the error log
 			}
+			in = null;
 		}
 		
 		private void initializeErrorLogIfNull(CommManagerError error) {
